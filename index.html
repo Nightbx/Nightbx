@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NightBX Shop</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    header {
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 52px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #38bdf8, #22c55e, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: #94a3b8; margin-top: 10px; }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .card h3 { color: #38bdf8; margin-bottom: 10px; }
+    .price { font-weight: 700; color: #22c55e; margin: 8px 0; }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    button {
+      background: linear-gradient(90deg, #38bdf8, #22c55e);
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NightBX</div>
+  <div class="subtitle">Official Weapon & Money Shop</div>
+</header>
+
+<main>
+  <div class="card">
+    <h3>Weapon Order</h3>
+    <select id="weaponSelect" onchange="updateWeaponPrice()">
+      <option value="" disabled selected>Select weapon</option>
+    </select>
+    <div class="price" id="weaponPrice">Select a weapon</div>
+    <input id="robloxNick" placeholder="Roblox nickname" />
+    <input id="discountCode" placeholder="Discount code (optional)" />
+    <button onclick="sendOrder('weapon')">Order Weapon</button>
+  </div>
+
+  <div class="card">
+    <h3>Money Order</h3>
+    <div class="price" id="moneyPrice">Base price: 45 R$</div>
+    <input id="moneyAmount" placeholder="Cash amount" />
+    <input id="robloxNick2" placeholder="Roblox nickname" />
+    <input id="discountCode2" placeholder="Discount code (optional)" />
+    <button onclick="sendOrder('money')">Order Money</button>
+  </div>
+
+  <div class="card">
+    <h3>Support</h3>
+    <p>Need help? Join our Discord.</p>
+    <button onclick="window.location.href='https://discord.gg/K87JWSCC'">Join Support</button>
+  </div>
+</main>
+
+<footer>
+  © 2025 NightBX • All rights reserved
+</footer>
+
+<script>
+/* ================= CONFIG ================= */
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1455558145383469298/4k4lWEV1YRvOXWmnLMHtNx9XfQMh7V9rdOBHr6YMuAtsQmePSGJ674jYS6wfk2KPsm8X";
+
+/* ================= DATA ================= */
+const WEAPONS = [
+  { name: "Fully BlakDrac", cash: 20000, robux: 10 },
+  { name: "Fully ARB", cash: 20000, robux: 10 },
+  { name: "Fully 300 Blackout", cash: 40000, robux: 22 },
+  { name: "G19X Button", cash: 30000, robux: 18 },
+  { name: "G29X Button", cash: 34000, robux: 22 },
+  { name: "G26 Button", cash: 31000, robux: 20 },
+  { name: "G27 Button", cash: 31000, robux: 20 },
+  { name: "G22 Button (25rd)", cash: 25000, robux: 16 },
+  { name: "G20 Button", cash: 30000, robux: 18 },
+  { name: "G21 Button", cash: 30000, robux: 18 },
+  { name: "Gold Button", cash: 30000, robux: 20 },
+  { name: "Cyan Button", cash: 30000, robux: 20 },
+  { name: "Glock 19 Button", cash: 31000, robux: 20 },
+  { name: "Binary G17", cash: 30000, robux: 20 },
+  { name: "Binary ARP", cash: 30000, robux: 20 },
+  { name: "Binary Draco", cash: 30000, robux: 22 },
+  { name: "NSR-9 Drum", cash: 29000, robux: 20 },
+  { name: "Grey DARP Drum", cash: 25000, robux: 16 },
+  { name: "TSR Drum", cash: 15000, robux: 8 },
+  { name: "Custom AR9", cash: 120000, robux: 34 },
+  { name: "G29 Switch", cash: 35000, robux: 24 },
+  { name: "Incog G20", cash: 31000, robux: 20 },
+  { name: "M&P2", cash: 30000, robux: 18 }
+];
+
+let globalDiscount = 0; // sync manually with bot
+
+/* ================= INIT ================= */
+const weaponSelect = document.getElementById('weaponSelect');
+WEAPONS.forEach((w, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = w.name;
+  weaponSelect.appendChild(opt);
+});
+
+function applyDiscount(v) {
+  return globalDiscount > 0 ? Math.round(v - v * (globalDiscount / 100)) : v;
+}
+
+function formatCash(v) {
+  return v >= 1000000 ? v / 1000000 + 'M' : v >= 1000 ? v / 1000 + 'k' : v;
+}
+
+function updateWeaponPrice() {
+  const w = WEAPONS[weaponSelect.value];
+  if (!w) return;
+  document.getElementById('weaponPrice').innerText =
+    `Price: ${formatCash(applyDiscount(w.cash))} Cash | ${applyDiscount(w.robux)} R$`;
+}
+
+/* ================= SEND ORDER ================= */
+async function sendOrder(type) {
+  let embed;
+
+  if (type === 'weapon') {
+    const w = WEAPONS[weaponSelect.value];
+    if (!w) return alert('Select a weapon');
+
+    embed = {
+      title: '🛒 WEAPON ORDER',
+      description:
+        `Weapon: **${w.name}**
+` +
+        `Price: ${formatCash(applyDiscount(w.cash))} Cash | ${applyDiscount(w.robux)} R$
+` +
+        `Roblox: **${robloxNick.value}**
+` +
+        `Code: ${discountCode.value || 'none'}`
+    };
+  } else {
+    embed = {
+      title: '💰 MONEY ORDER',
+      description:
+        `Amount: ${moneyAmount.value}
+` +
+        `Roblox: **${robloxNick2.value}**
+` +
+        `Code: ${discountCode2.value || 'none'}`
+    };
+  }
+
+  await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] })
+  });
+
+  alert('Order sent! Seller has been notified.');
+}
+</script>
+
+</body>
+</html>
